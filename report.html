@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Log Analysis Report</title>
+  <style>
+    body    { font-family: -apple-system, Helvetica, Arial, sans-serif;
+              margin: 40px auto; max-width: 900px; color: #222; }
+    h1      { margin-bottom: 4px; }
+    .sub    { color: #777; margin-bottom: 28px; }
+    .summary{ background: #f6f7f9; border-left: 3px solid #888;
+              padding: 16px 18px; margin-bottom: 28px; line-height: 1.6;
+              white-space: pre-wrap; }
+    .boxes  { display: flex; gap: 12px; margin-bottom: 28px; }
+    .box    { flex: 1; border: 1px solid #ddd; border-radius: 8px; padding: 14px; }
+    .num    { font-size: 28px; font-weight: 600; }
+    .label  { color: #777; font-size: 13px; }
+    table   { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th      { text-align: left; border-bottom: 2px solid #ddd; padding: 8px; }
+    td      { border-bottom: 1px solid #eee; padding: 8px; vertical-align: top; }
+    .pill   { padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+    .high   { background: #fde2e0; color: #8b1a10; }
+    .medium { background: #fdf0d5; color: #8a5a00; }
+    .low    { background: #e6f0e6; color: #2a5c2a; }
+  </style>
+</head>
+<body>
+  <h1>Log Analysis Report</h1>
+  <div class="sub">sample.log &middot; 15 lines read</div>
+
+  <div class="summary">A review of the log file revealed eleven security threats, including unauthorized login attempts, malware execution, and a database attack. Most urgently, an internal computer sent 312MB of data to an external location, and our security monitoring service was shut down. We need to immediately restart the security monitoring service, isolate the affected internal systems, and block the external host address.
+
+Risk: Critical</div>
+
+  <div class="boxes">
+    <div class="box"><div class="num">11</div><div class="label">threats found</div></div>
+    <div class="box"><div class="num">6</div><div class="label">high</div></div>
+    <div class="box"><div class="num">4</div><div class="label">medium</div></div>
+    <div class="box"><div class="num">1</div><div class="label">low</div></div>
+  </div>
+
+  <table>
+    <tr><th>Time</th><th>Threat</th><th>Severity</th><th>MITRE</th><th>Log line</th></tr>
+    <tr>
+      <td>2026-08-27 08:15</td>
+      <td>Port scan</td>
+      <td><span class="pill low">low</span></td>
+      <td>T1046</td>
+      <td>Port scan detected from 192.0.2.14</td>
+    </tr>
+    <tr>
+      <td>2026-08-27 08:41</td>
+      <td>Brute force</td>
+      <td><span class="pill medium">medium</span></td>
+      <td>T1110</td>
+      <td>Failed login for user admin from 198.51.100.77</td>
+    </tr>
+    <tr>
+      <td>2026-08-27 08:42</td>
+      <td>Brute force</td>
+      <td><span class="pill medium">medium</span></td>
+      <td>T1110</td>
+      <td>Failed login for user root from 198.51.100.77</td>
+    </tr>
+    <tr>
+      <td>2026-08-27 08:43</td>
+      <td>Brute force</td>
+      <td><span class="pill medium">medium</span></td>
+      <td>T1110</td>
+      <td>Failed login for user postgres from 198.51.100.77</td>
+    </tr>
+    <tr>
+      <td>2026-08-27 08:45</td>
+      <td>Blocked connection</td>
+      <td><span class="pill medium">medium</span></td>
+      <td>T1071</td>
+      <td>Blocked outbound connection to 45.9.148.203</td>
+    </tr>
+    <tr>
+      <td>2026-08-27 09:20</td>
+      <td>Odd process</td>
+      <td><span class="pill high">high</span></td>
+      <td>T1059</td>
+      <td>Unexpected process started: powershell -enc SQBFAFgA</td>
+    </tr>
+    <tr>
+      <td>2026-08-27 09:24</td>
+      <td>Malware</td>
+      <td><span class="pill high">high</span></td>
+      <td>T1204</td>
+      <td>Malware found: Trojan.Agent in order.pdf.exe</td>
+    </tr>
+    <tr>
+      <td>2026-08-27 09:31</td>
+      <td>Data sent out</td>
+      <td><span class="pill high">high</span></td>
+      <td>T1041</td>
+      <td>10.20.4.58 sent 312MB to external host 45.9.148.203</td>
+    </tr>
+    <tr>
+      <td>2026-08-27 09:52</td>
+      <td>Privilege misuse</td>
+      <td><span class="pill high">high</span></td>
+      <td>T1548</td>
+      <td>User tnakamura used sudo without permission</td>
+    </tr>
+    <tr>
+      <td>2026-08-27 10:02</td>
+      <td>SQL injection</td>
+      <td><span class="pill high">high</span></td>
+      <td>T1190</td>
+      <td>Odd query: SELECT * FROM customers WHERE email LIKE '%' OR '1'='1'</td>
+    </tr>
+    <tr>
+      <td>2026-08-27 10:22</td>
+      <td>Monitoring stopped</td>
+      <td><span class="pill high">high</span></td>
+      <td>T1562</td>
+      <td>Security monitoring service stopped</td>
+    </tr>
+  </table>
+</body>
+</html>
