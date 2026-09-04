@@ -1,0 +1,15 @@
+[2026-08-27 07:05] [INFO] [AUTH] User rgomez logged in from 10.20.4.31
+[2026-08-27 07:11] [INFO] [BACKUP] Nightly backup finished
+[2026-08-27 08:15] [WARNING] [NETWORK] Port scan detected from 192.0.2.14
+[2026-08-27 08:41] [WARNING] [AUTH] Failed login for user admin from 198.51.100.77
+[2026-08-27 08:42] [WARNING] [AUTH] Failed login for user root from 198.51.100.77
+[2026-08-27 08:43] [WARNING] [AUTH] Failed login for user postgres from 198.51.100.77
+[2026-08-27 08:45] [ERROR] [FIREWALL] Blocked outbound connection to 45.9.148.203
+[2026-08-27 09:20] [WARNING] [PROCESS] Unexpected process started: powershell -enc SQBFAFgA
+[2026-08-27 09:24] [ERROR] [ANTIVIRUS] Malware found: Trojan.Agent in order.pdf.exe
+[2026-08-27 09:31] [ERROR] [NETWORK] 10.20.4.58 sent 312MB to external host 45.9.148.203
+[2026-08-27 09:52] [WARNING] [PRIVILEGES] User tnakamura used sudo without permission
+[2026-08-27 10:02] [WARNING] [DATABASE] Odd query: SELECT * FROM customers WHERE email LIKE '%' OR '1'='1'
+[2026-08-27 10:22] [CRITICAL] [SECURITY] Security monitoring service stopped
+[2026-08-27 10:44] [INFO] [NETWORK] Network 10.20.4.0/24 isolated
+[2026-08-27 11:05] [INFO] [SECURITY] Incident ticket created: IR-2026-08-27-004
