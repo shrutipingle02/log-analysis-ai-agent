@@ -1,0 +1,9 @@
+# secrets - never commit
+.env
+
+*_analysis.html
+.DS_Store
+__pycache__/
+
+# rendered export, GitHub renders README.md
+README.html
