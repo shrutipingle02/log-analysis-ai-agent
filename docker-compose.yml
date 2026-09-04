@@ -1,0 +1,31 @@
+# Runs n8n locally in Docker.
+#
+#   docker compose up -d      start it
+#   docker compose down       stop it
+#
+# Then open http://localhost:5678
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n-log-analyzer
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # Read from the .env file sitting next to this one.
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # n8n blocks nodes from reading environment variables by default,
+      # and the AI node needs the key.
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      # n8n blocks reading and writing files unless a folder is allowed.
+      - N8N_RESTRICT_FILE_ACCESS_TO=/workflow
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - GENERIC_TIMEZONE=UTC
+    volumes:
+      - n8n_data:/home/node/.n8n
+      # Lets us import the workflow file from inside the container.
+      - ./:/workflow
+
+volumes:
+  n8n_data:
