@@ -1,7 +1,7 @@
 # Log Analysis AI Agent 
 
 An n8n workflow that reads a security log file, flags suspicious lines, maps them
-to MITRE ATT&CK techniques, and writes an HTML incident report. A language model
+to MITRE ATT&CK techniques and writes an HTML incident report. A language model
 adds a short plain-English summary at the top.
 
 ## Features
