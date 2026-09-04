@@ -53,6 +53,8 @@ In n8n: **⋯** menu → **Import from File** → pick `workflow.json`.
 
 ## Workflow Architecture
 
+![The workflow on the n8n canvas](workflow.png)
+
     Click to Test  →  Open Sample Log  →  Read File  →  Parse Lines  →  Find Threats
                    →  Build Prompt  →  Ask AI  →  Make Report  →  To File  →  Save Report
 
