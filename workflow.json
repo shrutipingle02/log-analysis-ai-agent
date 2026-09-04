@@ -1,0 +1,252 @@
+{
+  "name": "Log Analysis AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// READ FILE\n// The webhook gives us the uploaded file as binary data.\n// Turn it into text, then into a list of lines.\n\nconst item = items[0];\nconst fileKey = Object.keys(item.binary)[0];\n\nconst buffer = await this.helpers.getBinaryDataBuffer(0, fileKey);\nconst text = buffer.toString('utf8');\n\nconst lines = text.split('\\n').filter(line => line.trim() !== '');\n\nreturn [{\n  json: {\n    fileName: item.binary[fileKey].fileName,\n    lines: lines\n  }\n}];"
+      },
+      "id": "22222222-2222-2222-2222-222222222222",
+      "name": "Read File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// PARSE LINES\n// Every line looks like:  [time] [LEVEL] [PART] message\n\nconst lines = items[0].json.lines;\n\nconst entries = lines.map(line => {\n  const bits = line.match(/\\[(.+?)\\] \\[(.+?)\\] \\[(.+?)\\] (.+)/);\n  if (!bits) return null;\n  return {\n    time: bits[1],\n    level: bits[2],\n    part: bits[3],\n    message: bits[4]\n  };\n}).filter(entry => entry !== null);\n\n// Count how many lines of each level, and of each part.\nconst levelCount = {};\nconst partCount = {};\n\nfor (const entry of entries) {\n  levelCount[entry.level] = (levelCount[entry.level] || 0) + 1;\n  partCount[entry.part] = (partCount[entry.part] || 0) + 1;\n}\n\nreturn [{\n  json: {\n    fileName: items[0].json.fileName,\n    total: entries.length,\n    levelCount: levelCount,\n    partCount: partCount,\n    entries: entries\n  }\n}];"
+      },
+      "id": "33333333-3333-3333-3333-333333333333",
+      "name": "Parse Lines",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// FIND THREATS\n// Each rule has a name, what to look for, how bad it is,\n// and its MITRE ATT&CK id (a public list security teams use).\n\nconst RULES = [\n  { name: 'Brute force',        find: /failed login/i,                  severity: 'medium', mitre: 'T1110' },\n  { name: 'Port scan',          find: /port scan/i,                     severity: 'low',    mitre: 'T1046' },\n  { name: 'Blocked connection', find: /blocked outbound/i,              severity: 'medium', mitre: 'T1071' },\n  { name: 'Odd process',        find: /powershell -enc|unexpected process/i, severity: 'high', mitre: 'T1059' },\n  { name: 'Malware',            find: /malware|trojan/i,                severity: 'high',   mitre: 'T1204' },\n  { name: 'Data sent out',      find: /sent \\d+MB/i,                    severity: 'high',   mitre: 'T1041' },\n  { name: 'Privilege misuse',   find: /sudo without permission|elevation of privilege/i, severity: 'high', mitre: 'T1548' },\n  { name: 'SQL injection',      find: /'1'='1|drop table|union select/i, severity: 'high',   mitre: 'T1190' },\n  { name: 'Monitoring stopped', find: /monitoring service stopped|logs cleared/i, severity: 'high', mitre: 'T1562' }\n];\n\nconst entries = items[0].json.entries;\nconst threats = [];\n\n// Check every line against every rule.\nfor (const entry of entries) {\n  for (const rule of RULES) {\n    if (rule.find.test(entry.message)) {\n      threats.push({\n        time: entry.time,\n        level: entry.level,\n        part: entry.part,\n        message: entry.message,\n        threat: rule.name,\n        severity: rule.severity,\n        mitre: rule.mitre\n      });\n      break;   // one rule per line is enough\n    }\n  }\n}\n\n// Count the threats by how bad they are.\nconst severityCount = { high: 0, medium: 0, low: 0 };\nfor (const threat of threats) {\n  severityCount[threat.severity]++;\n}\n\nreturn [{\n  json: {\n    fileName: items[0].json.fileName,\n    total: items[0].json.total,\n    levelCount: items[0].json.levelCount,\n    partCount: items[0].json.partCount,\n    threatCount: threats.length,\n    severityCount: severityCount,\n    threats: threats\n  }\n}];"
+      },
+      "id": "44444444-4444-4444-4444-444444444444",
+      "name": "Find Threats",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// BUILD PROMPT\n// Turn the findings into the question we send to the AI.\n\nconst data = items[0].json;\n\n// One line per threat, so the AI only sees facts.\nconst list = data.threats.map(t =>\n  `- ${t.time}  ${t.threat} (${t.mitre}, ${t.severity}): ${t.message}`\n).join('\\n');\n\nconst prompt = `You are a security analyst writing the opening of an incident report.\n\nLog file: ${data.fileName}\nLines read: ${data.total}\nThreats found: ${data.threatCount} (high ${data.severityCount.high}, medium ${data.severityCount.medium}, low ${data.severityCount.low})\n\nFindings:\n${list}\n\nWrite 3 to 5 short sentences in plain English, for a manager who is not technical.\nSay what happened, what is most urgent, and what to do first.\nEnd with one line on its own: Risk: Low, Risk: Medium, Risk: High or Risk: Critical.\n\nRules:\n- Use only the findings above. Do not invent anything.\n- No bullet points, no headings, no markdown.`;\n\nreturn [{ json: { prompt: prompt } }];"
+      },
+      "id": "77777777-7777-7777-7777-777777777777",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ASK AI\n// Send the prompt to Gemini and hand back its answer.\n\nconst response = await this.helpers.httpRequest({\n  method: 'POST',\n  url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',\n  headers: {\n    'x-goog-api-key': $env.GEMINI_API_KEY,\n    'content-type': 'application/json'\n  },\n  body: {\n    contents: [{ parts: [{ text: items[0].json.prompt }] }],\n    generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }\n  },\n  json: true,\n  timeout: 90000\n});\n\nreturn [{ json: response }];"
+      },
+      "id": "88888888-8888-8888-8888-888888888888",
+      "name": "Ask AI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// MAKE REPORT\n// Build the HTML page: AI summary on top, then the numbers, then the table.\n\n// The findings come from the Find Threats node, a few steps back.\nconst data = $('Find Threats').first().json;\n\n// The AI answer, if it came back. If anything went wrong we carry on without it.\nlet summary = 'AI summary unavailable.';\ntry {\n  // The answer can come back in several parts. Take the first one with text.\n  const parts = items[0].json.candidates[0].content.parts;\n  summary = parts.find(part => part.text).text.trim();\n} catch (error) {\n  // leave the fallback text\n}\n\n// One table row per threat.\nconst rows = data.threats.map(t => `\n    <tr>\n      <td>${t.time}</td>\n      <td>${t.threat}</td>\n      <td><span class=\"pill ${t.severity}\">${t.severity}</span></td>\n      <td>${t.mitre}</td>\n      <td>${t.message}</td>\n    </tr>`).join('');\n\nconst html = `<!doctype html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <title>Log Analysis Report</title>\n  <style>\n    body    { font-family: -apple-system, Helvetica, Arial, sans-serif;\n              margin: 40px auto; max-width: 900px; color: #222; }\n    h1      { margin-bottom: 4px; }\n    .sub    { color: #777; margin-bottom: 28px; }\n    .summary{ background: #f6f7f9; border-left: 3px solid #888;\n              padding: 16px 18px; margin-bottom: 28px; line-height: 1.6;\n              white-space: pre-wrap; }\n    .boxes  { display: flex; gap: 12px; margin-bottom: 28px; }\n    .box    { flex: 1; border: 1px solid #ddd; border-radius: 8px; padding: 14px; }\n    .num    { font-size: 28px; font-weight: 600; }\n    .label  { color: #777; font-size: 13px; }\n    table   { width: 100%; border-collapse: collapse; font-size: 14px; }\n    th      { text-align: left; border-bottom: 2px solid #ddd; padding: 8px; }\n    td      { border-bottom: 1px solid #eee; padding: 8px; vertical-align: top; }\n    .pill   { padding: 2px 8px; border-radius: 10px; font-size: 12px; }\n    .high   { background: #fde2e0; color: #8b1a10; }\n    .medium { background: #fdf0d5; color: #8a5a00; }\n    .low    { background: #e6f0e6; color: #2a5c2a; }\n  </style>\n</head>\n<body>\n  <h1>Log Analysis Report</h1>\n  <div class=\"sub\">${data.fileName} &middot; ${data.total} lines read</div>\n\n  <div class=\"summary\">${summary}</div>\n\n  <div class=\"boxes\">\n    <div class=\"box\"><div class=\"num\">${data.threatCount}</div><div class=\"label\">threats found</div></div>\n    <div class=\"box\"><div class=\"num\">${data.severityCount.high}</div><div class=\"label\">high</div></div>\n    <div class=\"box\"><div class=\"num\">${data.severityCount.medium}</div><div class=\"label\">medium</div></div>\n    <div class=\"box\"><div class=\"num\">${data.severityCount.low}</div><div class=\"label\">low</div></div>\n  </div>\n\n  <table>\n    <tr><th>Time</th><th>Threat</th><th>Severity</th><th>MITRE</th><th>Log line</th></tr>${rows}\n  </table>\n</body>\n</html>`;\n\nreturn [{ json: { html: html } }];"
+      },
+      "id": "55555555-5555-5555-5555-555555555555",
+      "name": "Make Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "html",
+        "options": {
+          "fileName": "report.html",
+          "mimeType": "text/html",
+          "encoding": "utf8"
+        }
+      },
+      "id": "99999999-9999-9999-9999-999999999999",
+      "name": "To File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/workflow/report.html",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "aaaabbbb-cccc-dddd-eeee-ffff00001111",
+      "name": "Save Report",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1980,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "cccc1111-2222-3333-4444-555566667777",
+      "name": "Click to Test",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fileSelector": "/workflow/sample.log",
+        "options": {}
+      },
+      "id": "dddd1111-2222-3333-4444-555566667777",
+      "name": "Open Sample Log",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Read File": {
+      "main": [
+        [
+          {
+            "node": "Parse Lines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Lines": {
+      "main": [
+        [
+          {
+            "node": "Find Threats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Threats": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Make Report": {
+      "main": [
+        [
+          {
+            "node": "To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Ask AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask AI": {
+      "main": [
+        [
+          {
+            "node": "Make Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "To File": {
+      "main": [
+        [
+          {
+            "node": "Save Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Report": {
+      "main": [
+        []
+      ]
+    },
+    "Click to Test": {
+      "main": [
+        [
+          {
+            "node": "Open Sample Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Open Sample Log": {
+      "main": [
+        [
+          {
+            "node": "Read File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "pinData": {}
+}
